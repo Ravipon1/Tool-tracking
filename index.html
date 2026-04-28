@@ -5,26 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BIC Tool Tracker</title>
 <style>
-  body { font-family: 'IBM Plex Sans Thai', sans-serif; padding: 20px; background: #f4f8ff; }
-  .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
-  input, select, button { padding: 12px; margin: 8px 0; width: 100%; border-radius: 6px; }
-  button { background: #2563eb; color: white; border: none; font-weight: bold; }
-  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 15px 25px; border-radius: 8px; z-index: 9999; }
+  body { font-family: 'IBM Plex Sans Thai', sans-serif; background: #f4f8ff; padding: 20px; }
+  .card { background: white; max-width: 600px; margin: 0 auto; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+  input, select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+  button { width: 100%; padding: 15px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 15px 25px; border-radius: 8px; color: white; z-index: 10000; display: none; }
 </style>
 </head>
 <body>
 
 <div class="card">
-  <h2>🔧 ทดสอบการยืมเครื่องมือ</h2>
+  <h2>🔧 ยืมเครื่องมือ</h2>
   <input type="text" id="name" placeholder="ชื่อผู้ยืม">
-  <input type="text" id="asset" placeholder="Asset ID (เช่น BIC-T-001)">
+  <input type="text" id="asset" placeholder="Asset ID">
   <select id="dept">
-    <option value="">เลือกแผนก</option>
+    <option value="">— เลือกแผนก —</option>
     <option value="ME">ME - Mechanical Engineer</option>
     <option value="EE">EE - Electrical Engineer</option>
     <option value="CI">CI - Control & Instrument Engineer</option>
   </select>
-  <button onclick="testSubmit()">ยืนยันการยืม</button>
+  <button onclick="submitBorrow()">✅ ยืนยันการยืม</button>
 </div>
 
 <div id="toast" class="toast"></div>
@@ -32,15 +32,17 @@
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzC-nIsDH2e3VqUeiV2CFSkbeKRiNNan-nsuBcC8M8mtH92gnRZD_xLY1x5rwKOy52A/exec";
 
-async function testSubmit() {
+async function submitBorrow() {
   const name = document.getElementById('name').value.trim();
   const asset = document.getElementById('asset').value.trim().toUpperCase();
   const dept = document.getElementById('dept').value;
 
   if (!name || !asset || !dept) {
-    showToast("กรุณากรอกข้อมูลให้ครบ");
+    showToast("กรุณากรอกข้อมูลให้ครบ", "red");
     return;
   }
+
+  showToast("กำลังส่งข้อมูล...", "#2563eb");
 
   const record = {
     id: "TX" + Date.now(),
@@ -50,32 +52,32 @@ async function testSubmit() {
     toolName: "เครื่องมือ " + asset
   };
 
-  showToast("กำลังส่งข้อมูล...");
-
   try {
     await fetch(SCRIPT_URL, {
       method: 'POST',
+      mode: 'no-cors',           // ใช้ no-cors
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'borrow', record: record })
+      body: JSON.stringify({ action: 'borrow', record })
     });
 
-    showToast("✅ ส่งข้อมูลสำเร็จ! ตรวจ Google Sheet ได้เลย", 5000);
-    
+    showToast("✅ ส่งข้อมูลสำเร็จ! ตรวจ Google Sheet ได้", "#2ecc71");
+
     // รีเซ็ต
     document.getElementById('name').value = '';
     document.getElementById('asset').value = '';
 
   } catch (err) {
     console.error(err);
-    showToast("❌ ส่งข้อมูลไม่สำเร็จ ดู Console (F12)", 5000);
+    showToast("❌ เกิดข้อผิดพลาด - ดู Console (F12)", "red");
   }
 }
 
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.display = 'block';
-  setTimeout(() => t.style.display = 'none', 5000);
+function showToast(msg, color = "#333") {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.style.background = color;
+  toast.style.display = 'block';
+  setTimeout(() => toast.style.display = 'none', 5000);
 }
 </script>
 </body>
