@@ -3,28 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BIC Tool Tracker</title>
+<title>BIC Tool Tracker - ทดสอบ</title>
 <style>
-  body { font-family: 'IBM Plex Sans Thai', sans-serif; background: #f4f8ff; padding: 20px; }
-  .card { background: white; max-width: 600px; margin: 0 auto; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-  input, select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
-  button { width: 100%; padding: 15px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 16px 25px; border-radius: 8px; color: white; z-index: 10000; display: none; font-weight: 500; }
+  body { font-family: sans-serif; background: #f4f8ff; padding: 20px; }
+  .card { background: white; padding: 30px; border-radius: 12px; max-width: 500px; margin: 0 auto; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+  input, select, button { width: 100%; padding: 15px; margin: 10px 0; border-radius: 8px; font-size: 16px; }
+  button { background: #2563eb; color: white; border: none; font-weight: bold; cursor: pointer; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 15px 25px; border-radius: 8px; color: white; z-index: 9999; }
 </style>
 </head>
 <body>
 
 <div class="card">
-  <h2>🔧 ยืมเครื่องมือ</h2>
-  <input type="text" id="name" placeholder="ชื่อผู้ยืม">
-  <input type="text" id="asset" placeholder="Asset ID (เช่น BIC-T-001)">
+  <h2>🔧 ทดสอบการยืมเครื่องมือ</h2>
+  <input type="text" id="name" placeholder="ชื่อผู้ยืม" value="ทดสอบ">
+  <input type="text" id="asset" placeholder="Asset ID" value="BIC-T-001">
   <select id="dept">
-    <option value="">— เลือกแผนก —</option>
     <option value="ME">ME - Mechanical Engineer</option>
-    <option value="EE">EE - Electrical Engineer</option>
-    <option value="CI">CI - Control & Instrument Engineer</option>
   </select>
-  <button onclick="submitBorrow()">✅ ยืนยันการยืม</button>
+  <button onclick="submitBorrow()">ส่งข้อมูลทดสอบ</button>
 </div>
 
 <div id="toast" class="toast"></div>
@@ -33,58 +30,43 @@
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzC-nIsDH2e3VqUeiV2CFSkbeKRiNNan-nsuBcC8M8mtH92gnRZD_xLY1x5rwKOy52A/exec";
 
 function submitBorrow() {
-  const name = document.getElementById('name').value.trim();
-  const asset = document.getElementById('asset').value.trim().toUpperCase();
+  const name = document.getElementById('name').value;
+  const asset = document.getElementById('asset').value;
   const dept = document.getElementById('dept').value;
 
-  if (!name || !asset || !dept) {
-    showToast("กรุณากรอกข้อมูลให้ครบ", "#e74c3c");
-    return;
-  }
+  showToast("กำลังส่งข้อมูล...");
 
-  showToast("กำลังบันทึกข้อมูล...", "#2563eb");
-
-  const record = {
-    id: "TX" + Date.now(),
-    borrowerName: name,
-    department: dept,
-    assetId: asset,
-    toolName: "เครื่องมือ " + asset,
-    dueTime: "17:00"
+  const payload = {
+    action: "borrow",
+    record: {
+      id: "TX" + Date.now(),
+      borrowerName: name,
+      department: dept,
+      assetId: asset,
+      toolName: "เครื่องมือทดสอบ"
+    }
   };
 
-  // ใช้ Image Beacon เพื่อ bypass CORS
-  const beaconData = new URLSearchParams();
-  beaconData.append('action', 'borrow');
-  beaconData.append('record', JSON.stringify(record));
-
-  const img = new Image();
-  img.src = SCRIPT_URL + '?' + beaconData.toString();
-
-  img.onload = () => showToast("✅ บันทึกการยืมสำเร็จ!", "#2ecc71");
-  img.onerror = () => showToast("✅ ส่งข้อมูลแล้ว (อาจมี delay)", "#2ecc71");
-
-  // รีเซ็ตฟอร์ม
-  setTimeout(() => {
-    document.getElementById('name').value = '';
-    document.getElementById('asset').value = '';
-  }, 800);
+  // วิธีที่ 1: ใช้ fetch + no-cors
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).then(() => {
+    showToast("✅ ส่งข้อมูลสำเร็จแล้ว ตรวจ Google Sheet", "#2ecc71");
+  }).catch(() => {
+    showToast("ส่งข้อมูลแล้ว (อาจใช้เวลา)", "#2ecc71");
+  });
 }
 
-function showToast(msg, color) {
-  const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.style.background = color;
-  toast.style.display = 'block';
-  setTimeout(() => toast.style.display = 'none', 4000);
+function showToast(msg, color = "#333") {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 4000);
 }
-
-// รองรับ QR Code
-window.onload = () => {
-  const params = new URLSearchParams(window.location.search);
-  const asset = params.get('asset');
-  if (asset) document.getElementById('asset').value = asset.toUpperCase();
-};
 </script>
 </body>
 </html>
