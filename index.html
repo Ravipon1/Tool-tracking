@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIC Tool Tracker — ระบบยืม-คืนเครื่องมือ</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f8ff;
+    --surface: #ffffff;
+    --surface2: #eef4ff;
+    --border: #d6e4ff;
+    --border-bright: #9fc2ff;
+    --accent: #2563eb;
+    --accent2: #1d4ed8;
+    --green: #2ecc71;
+    --green-dim: #1a6b3e;
+    --red: #e8523a;
+    --red-dim: #6b2a1a;
+    --blue: #4a9eff;
+    --text: #0f172a;
+    --text-dim: #64748b;
+    --text-mid: #334155;
+    --font: 'IBM Plex Sans Thai', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+    --radius: 8px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--accent);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header-logo .badge {
+    background: var(--accent);
+    color: #000;
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+  }
+  .header-logo h1 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.5px;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .clock {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; } 50% { opacity: 0.4; }
+  }
+
+  /* LAYOUT */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 20px;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 24px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 10px 16px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-dim);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .tab-btn:hover { background: var(--surface2); color: var(--text-mid); }
+  .tab-btn.active {
+    background: var(--accent);
+    color: #000;
+    font-weight: 600;
+  }
+  .tab-btn .tab-icon { font-size: 16px; }
+
+  /* PANELS */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .stat-card.total::before { background: var(--blue); }
+  .stat-card.out::before { background: var(--accent); }
+  .stat-card.overdue::before { background: var(--red); }
+  .stat-card.returned::before { background: var(--green); }
+  .stat-num {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-card.total .stat-num { color: var(--blue); }
+  .stat-card.out .stat-num { color: var(--accent); }
+  .stat-card.overdue .stat-num { color: var(--red); }
+  .stat-card.returned .stat-num { color: var(--green); }
+  .stat-label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* FORM CARD */
+  .form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .form-card h2 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .form-group.full { grid-column: 1 / -1; }
+  label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  input, select, textarea {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+  }
+  select option { background: var(--surface2); }
+  textarea { resize: vertical; min-height: 72px; }
+
+  /* Borrow Multiple Items */
+  .borrow-item-row {
+    display: grid;
+    grid-template-columns: 2fr 3fr 80px;
+    gap: 12px;
+    margin-bottom: 12px;
+    align-items: end;
+  }
+
+  /* BUTTONS */
+  .btn {
+    padding: 11px 24px;
+    border: none;
+    border-radius: 6px;
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: #ffc347; transform: translateY(-1px); }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-danger:hover { background: #ff6b50; }
+  .btn-success { background: var(--green); color: #000; }
+  .btn-success:hover { background: #3ddb7d; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--border-bright); color: var(--text); }
+  .btn-sm { padding: 6px 14px; font-size: 12px; }
+
+  .form-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+  }
+
+  /* TABLE */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .table-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .table-header h2 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-mid);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .search-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    padding: 7px 12px;
+    outline: none;
+    width: 220px;
+    transition: border-color 0.2s;
+  }
+  .search-box:focus { border-color: var(--accent); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead th {
+    background: var(--surface2);
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    white-space: nowrap;
+  }
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  td { padding: 11px 16px; color: var(--text-mid); vertical-align: middle; }
+  td .asset-id {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--blue);
+    background: rgba(74,158,255,0.1);
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+  td .name-bold { color: var(--text); font-weight: 500; }
+  td .dept-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: var(--text-dim);
+  }
+
+  /* STATUS BADGES */
+  .badge-out {
+    background: rgba(245,166,35,0.15);
+    color: var(--accent);
+    border: 1px solid rgba(245,166,35,0.3);
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-family: var(--mono);
+    white-space: nowrap;
+  }
+  .badge-overdue {
+    background: rgba(232,82,58,0.15);
+    color: var(--red);
+    border: 1px solid rgba(232,82,58,0.3);
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-family: var(--mono);
+    animation: blink 1.5s infinite;
+    white-space: nowrap;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.6} }
+  .badge-returned {
+    background: rgba(46,204,113,0.1);
+    color: var(--green);
+    border: 1px solid rgba(46,204,113,0.2);
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: var(--mono);
+    white-space: nowrap;
+  }
+
+  /* ALERT BANNER */
+  .alert-banner {
+    background: rgba(232,82,58,0.1);
+    border: 1px solid rgba(232,82,58,0.3);
+    border-left: 4px solid var(--red);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .alert-banner .alert-icon { font-size: 18px; }
+  .alert-banner h3 { font-size: 13px; font-weight: 600; color: var(--red); margin-bottom: 4px; }
+  .alert-banner p { font-size: 12px; color: var(--text-dim); }
+  .alert-banner.hidden { display: none; }
+
+  /* TOAST */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    font-size: 13px;
+    color: var(--text);
+    box-shadow: var(--shadow);
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    z-index: 999;
+    max-width: 320px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.success { border-left: 4px solid var(--green); }
+  #toast.error { border-left: 4px solid var(--red); }
+  #toast.warning { border-left: 4px solid var(--accent); }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-dim);
+  }
+  .empty-state .empty-icon { font-size: 36px; margin-bottom: 12px; }
+  .empty-state p { font-size: 13px; }
+
+  /* SETTINGS */
+  .settings-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .settings-section h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-label { font-size: 13px; color: var(--text-mid); }
+  .setting-label small { display: block; font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .setting-input { background: var(--bg); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: var(--mono); font-size: 12px; padding: 6px 10px; outline: none; width: 280px; }
+  .setting-input:focus { border-color: var(--accent); }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border-bright);
+    border-radius: 12px;
+    padding: 28px;
+    width: 480px;
+    max-width: 90vw;
+    box-shadow: var(--shadow);
+    transform: scale(0.95);
+    transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: scale(1); }
+  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .modal p { font-size: 13px; color: var(--text-dim); margin-bottom: 20px; }
+  .modal-item-info {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    margin-bottom: 20px;
+    font-size: 13px;
+  }
+  .modal-item-info .row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .modal-item-info .row:last-child { margin-bottom: 0; }
+  .modal-item-info .key { color: var(--text-dim); }
+  .modal-item-info .val { color: var(--text); font-weight: 500; font-family: var(--mono); font-size: 12px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+  /* HISTORY CONTROLS */
+  .history-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filter-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+  }
+  .filter-select:focus { border-color: var(--accent); }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }
+
+  @media (max-width: 700px) {
+    .stats-bar { grid-template-columns: 1fr 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    .tabs { flex-wrap: wrap; }
+    .borrow-item-row { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">
+    <span class="badge">BIC</span>
+    <h1>Tool Tracker — ระบบยืม-คืนเครื่องมือ</h1>
+  </div>
+  <div class="header-right">
+    <span class="clock" id="clockDisplay">--:--:--</span>
+    <div class="status-dot" title="ระบบออนไลน์"></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="container">
+
+  <!-- OVERDUE ALERT -->
+  <div class="alert-banner hidden" id="overdueAlert">
+    <div class="alert-icon">⚠️</div>
+    <div>
+      <h3 id="overdueAlertTitle">มีเครื่องมือค้างคืน!</h3>
+      <p id="overdueAlertBody">กรุณาตรวจสอบรายการที่แท็บ Dashboard</p>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('borrow')" id="tab-borrow">
+      <span class="tab-icon">🔧</span> Borrow / ยืมเครื่องมือ
+    </button>
+    <button class="tab-btn" onclick="switchTab('return')" id="tab-return">
+      <span class="tab-icon">↩️</span> Return / คืนเครื่องมือ
+    </button>
+    <button class="tab-btn" onclick="switchTab('dashboard')" id="tab-dashboard">
+      <span class="tab-icon">📊</span> Dashboard
+    </button>
+    <button class="tab-btn" onclick="switchTab('history')" id="tab-history">
+      <span class="tab-icon">📋</span> History
+    </button>
+    <button class="tab-btn" onclick="switchTab('settings')" id="tab-settings">
+      <span class="tab-icon">⚙️</span> Settings
+    </button>
+  </div>
+
+  <!-- ===== BORROW PANEL ===== -->
+  <div class="panel active" id="panel-borrow">
+    <div class="form-card">
+      <h2>🔧 Borrow — ยืมเครื่องมือ</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>ชื่อผู้ยืม (Borrower Name) *</label>
+          <input type="text" id="borrow_name" placeholder="กรอกชื่อ-นามสกุล" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>แผนก (Department) *</label>
+          <select id="borrow_dept">
+            <option value="">— เลือกแผนก —</option>
+            <option value="ME">ME - Mechanical Engineer</option>
+            <option value="EE">EE - Electrical Engineer</option>
+            <option value="CI">CI - Control & Instrument Engineer</option>
+          </select>
+        </div>
+
+        <div class="form-group full">
+          <label>รายการเครื่องมือที่ยืม *</label>
+          <div id="borrow-items"></div>
+          <button type="button" class="btn btn-primary" onclick="addBorrowRow()" style="margin-top: 8px;">
+            ＋ เพิ่มรายการเครื่องมือ
+          </button>
+        </div>
+
+        <div class="form-group">
+          <label>กำหนดคืน (Due Time) *</label>
+          <input type="time" id="borrow_due" value="17:00">
+        </div>
+        <div class="form-group">
+          <label>หมายเหตุ (Remark)</label>
+          <input type="text" id="borrow_remark" placeholder="ถ้ามี (เช่น ซ่อมเครื่องจักรไลน์ C)">
+        </div>
+
+        <div class="form-group full">
+          <label>แนบรูป / เอกสารหลักฐาน (Optional)</label>
+          <input type="file" id="borrow_photo" accept="image/*,.pdf">
+          <small style="color:var(--text-dim); display:block; margin-top:4px;">รูปถ่ายก่อนยืมหรือเอกสารประกอบ</small>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="submitBorrow()">✅ ยืนยันการยืม</button>
+        <button class="btn btn-ghost" onclick="clearBorrowForm()">ล้างฟอร์ม</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== RETURN PANEL ===== -->
+  <div class="panel" id="panel-return">
+    <div class="form-card">
+      <h2>↩️ Return — คืนเครื่องมือ</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>ค้นหา Asset ID หรือชื่อผู้ยืม</label>
+          <input type="text" id="return_search" placeholder="พิมพ์เพื่อค้นหา..." oninput="filterReturnList()" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>สภาพเครื่องมือเมื่อคืน (Condition)</label>
+          <select id="return_condition">
+            <option value="ปกติ">✅ ปกติ</option>
+            <option value="มีรอยขีดข่วน">⚠️ มีรอยขีดข่วน</option>
+            <option value="ชำรุด/เสียหาย">❌ ชำรุด/เสียหาย</option>
+          </select>
+        </div>
+      </div>
+      <div id="return-list-wrap" style="margin-top:20px;">
+        <div class="empty-state" id="return-empty">
+          <div class="empty-icon">📭</div>
+          <p>ไม่มีเครื่องมือที่ถูกยืมอยู่ในขณะนี้</p>
+        </div>
+        <table id="return-table" style="display:none;">
+          <thead>
+            <tr>
+              <th>Asset ID</th>
+              <th>เครื่องมือ</th>
+              <th>ผู้ยืม</th>
+              <th>แผนก</th>
+              <th>ยืมเมื่อ</th>
+              <th>กำหนดคืน</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="return-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DASHBOARD PANEL ===== -->
+  <div class="panel" id="panel-dashboard">
+    <div class="stats-bar">
+      <div class="stat-card total"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Total Out Today</div></div>
+      <div class="stat-card out"><div class="stat-num" id="stat-out">0</div><div class="stat-label">Still Out</div></div>
+      <div class="stat-card overdue"><div class="stat-num" id="stat-overdue">0</div><div class="stat-label">Overdue ⚠️</div></div>
+      <div class="stat-card returned"><div class="stat-num" id="stat-returned">0</div><div class="stat-label">Returned Today</div></div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-header">
+        <h2>🔴 Currently Out — เครื่องมือที่ออกอยู่</h2>
+        <input class="search-box" type="text" placeholder="ค้นหา..." oninput="filterDashboard(this.value)" id="dash-search">
+      </div>
+      <div id="dashboard-empty" class="empty-state" style="display:none;">
+        <div class="empty-icon">✅</div>
+        <p>เครื่องมือทั้งหมดอยู่ในห้องครบถ้วน</p>
+      </div>
+      <table id="dash-table">
+        <thead>
+          <tr>
+            <th>Asset ID</th>
+            <th>เครื่องมือ</th>
+            <th>ผู้ยืม</th>
+            <th>แผนก</th>
+            <th>ยืมเมื่อ</th>
+            <th>กำหนดคืน</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="dash-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== HISTORY PANEL ===== -->
+  <div class="panel" id="panel-history">
+    <div class="history-controls">
+      <input class="search-box" type="text" placeholder="ค้นหาชื่อ, Asset ID, แผนก..." oninput="filterHistory(this.value)" style="width:250px;">
+      <select class="filter-select" id="hist-filter-dept" onchange="filterHistory('')">
+        <option value="">ทุกแผนก</option>
+        <option value="ME">ME - Mechanical Engineer</option>
+        <option value="EE">EE - Electrical Engineer</option>
+        <option value="CI">CI - Control & Instrument Engineer</option>
+      </select>
+      <select class="filter-select" id="hist-filter-status" onchange="filterHistory('')">
+        <option value="">ทุกสถานะ</option>
+        <option value="Out">Out</option>
+        <option value="Overdue">Overdue</option>
+        <option value="Returned">Returned</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇️ Export CSV</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearAllData()" style="color:var(--red);border-color:var(--red-dim);">🗑️ ล้างข้อมูลทั้งหมด</button>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header">
+        <h2>📋 Transaction History — ประวัติทั้งหมด</h2>
+        <span style="font-size:12px;color:var(--text-dim);" id="hist-count">0 รายการ</span>
+      </div>
+      <div id="history-empty" class="empty-state" style="display:none;">
+        <div class="empty-icon">📭</div>
+        <p>ยังไม่มีประวัติการยืม-คืน</p>
+      </div>
+      <table id="hist-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>วันที่/เวลา</th>
+            <th>Asset ID</th>
+            <th>เครื่องมือ</th>
+            <th>ผู้ยืม</th>
+            <th>แผนก</th>
+            <th>Due</th>
+            <th>คืนเมื่อ</th>
+            <th>สภาพ</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="hist-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== SETTINGS PANEL ===== -->
+  <div class="panel" id="panel-settings">
+    <div class="settings-section">
+      <h3>⚙️ Google Sheets Integration</h3>
+      <div class="setting-row">
+        <div class="setting-label">
+          Google Apps Script Web App URL
+          <small>วาง URL ที่ได้จาก Deploy → Web App ของ Apps Script</small>
+        </div>
+        <input class="setting-input" type="text" id="set_sheet_url" placeholder="https://script.google.com/macros/s/...">
+      </div>
+    </div>
+    <div class="settings-section">
+      <h3>📦 Tool Catalog — ทะเบียนเครื่องมือ</h3>
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">เพิ่มเครื่องมือเพื่อให้ฟิลด์ Asset ID แสดง autocomplete</p>
+      <div style="display:flex;gap:10px;margin-bottom:12px;">
+        <input type="text" id="cat_id" placeholder="Asset ID (เช่น BIC-T-001)" style="flex:1;">
+        <input type="text" id="cat_name" placeholder="ชื่อเครื่องมือ" style="flex:2;">
+        <button class="btn btn-primary btn-sm" onclick="addToCatalog()">+ เพิ่ม</button>
+      </div>
+      <div id="catalog-list" style="max-height:240px;overflow-y:auto;">
+        <div class="empty-state" style="padding:24px;" id="catalog-empty">
+          <p>ยังไม่มีเครื่องมือในทะเบียน</p>
+        </div>
+        <table id="catalog-table" style="display:none;">
+          <thead>
+            <tr><th>Asset ID</th><th>ชื่อเครื่องมือ</th><th>Action</th></tr>
+          </thead>
+          <tbody id="catalog-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="settings-section">
+      <h3>💾 ข้อมูลระบบ</h3>
+      <div class="setting-row">
+        <div class="setting-label">ข้อมูลทั้งหมดเก็บใน Local Storage ของ Browser<br><small>ใช้ Export CSV เพื่อ backup ข้อมูล</small></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇️ Export CSV</button>
+          <button class="btn btn-ghost btn-sm" onclick="saveSettings()" style="color:var(--green);border-color:var(--green-dim);">💾 บันทึก Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- RETURN CONFIRM MODAL -->
+<div class="modal-overlay" id="returnModal">
+  <div class="modal">
+    <h3>↩️ ยืนยันการคืนเครื่องมือ</h3>
+    <p>กรุณาตรวจสอบข้อมูลก่อนยืนยัน</p>
+    <div class="modal-item-info" id="modal-item-info"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-success" onclick="confirmReturn()">✅ ยืนยันคืน</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// =====================================================================
+// DATA LAYER
+// =====================================================================
+const KEYS = { RECORDS: 'bic_records', SETTINGS: 'bic_settings', CATALOG: 'bic_catalog' };
+
+function loadRecords() { return JSON.parse(localStorage.getItem(KEYS.RECORDS) || '[]'); }
+function saveRecords(d) { localStorage.setItem(KEYS.RECORDS, JSON.stringify(d)); }
+function loadSettings() { return JSON.parse(localStorage.getItem(KEYS.SETTINGS) || '{}'); }
+function saveSettingsData(d) { localStorage.setItem(KEYS.SETTINGS, JSON.stringify(d)); }
+function loadCatalog() { return JSON.parse(localStorage.getItem(KEYS.CATALOG) || '[]'); }
+function saveCatalog(d) { localStorage.setItem(KEYS.CATALOG, JSON.stringify(d)); }
+
+// =====================================================================
+// CLOCK
+// =====================================================================
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clockDisplay').textContent =
+    now.toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(updateClock, 1000); updateClock();
+
+// =====================================================================
+// TABS
+// =====================================================================
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'history') renderHistory();
+  if (name === 'return') renderReturnList();
+  if (name === 'settings') loadSettingsUI();
+}
+
+// =====================================================================
+// TOAST
+// =====================================================================
+function showToast(msg, type='success', duration=3000) {
+  const t = document.getElementById('toast');
+  const icons = { success:'✅', error:'❌', warning:'⚠️' };
+  t.innerHTML = `<span>${icons[type]||''}</span><span>${msg}</span>`;
+  t.className = `show ${type}`;
+  setTimeout(() => { t.className = ''; }, duration);
+}
+
+// =====================================================================
+// BORROW - Multiple Items
+// =====================================================================
+function addBorrowRow() {
+  const wrap = document.getElementById('borrow-items');
+  const row = document.createElement('div');
+  row.className = 'borrow-item-row';
+  row.innerHTML = `
+    <input type="text" class="item-asset" placeholder="Asset ID (เช่น BIC-T-001)">
+    <input type="text" class="item-tool" placeholder="ชื่อเครื่องมือ">
+    <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.borrow-item-row').remove()">ลบ</button>
+  `;
+  wrap.appendChild(row);
+}
+
+async function submitBorrow() {
+  const name = document.getElementById('borrow_name').value.trim();
+  const dept = document.getElementById('borrow_dept').value;
+  const due = document.getElementById('borrow_due').value;
+  const remark = document.getElementById('borrow_remark').value.trim();
+  const fileInput = document.getElementById('borrow_photo');
+  const attachment = fileInput.files[0] ? fileInput.files[0].name : '';
+
+  if (!name || !dept || !due) {
+    showToast('กรุณากรอก ชื่อผู้ยืม, แผนก และกำหนดคืน', 'error');
+    return;
+  }
+
+  const rows = document.querySelectorAll('#borrow-items .borrow-item-row');
+  const records = loadRecords();
+  const now = new Date();
+  let count = 0;
+  const newRecords = [];
+
+  for (const r of rows) {
+    const assetId = r.querySelector('.item-asset').value.trim().toUpperCase();
+    const toolName = r.querySelector('.item-tool').value.trim();
+
+    if (!assetId || !toolName) continue;
+
+    if (records.some(x => x.assetId === assetId && x.status !== 'Returned')) {
+      showToast(`เครื่องมือ ${assetId} ยังไม่ได้คืน`, 'warning');
+      continue;
+    }
+
+    const rec = {
+      id: 'TX' + Date.now() + Math.random().toString(36).substr(2, 6),
+      borrowedAt: now.toISOString(),
+      borrowerName: name,
+      department: dept,
+      assetId: assetId,
+      toolName: toolName,
+      dueTime: due,
+      remark: remark,
+      attachment: attachment,
+      status: 'Out',
+      returnedAt: null,
+      condition: null
+    };
+
+    records.push(rec);
+    newRecords.push(rec);
+    count++;
+  }
+
+  if (count === 0) {
+    showToast('กรุณากรอกข้อมูลเครื่องมืออย่างน้อย 1 รายการ', 'error');
+    return;
+  }
+
+  saveRecords(records);
+
+  // ส่งข้อมูลไป Google Sheets
+  for (const rec of newRecords) {
+    await pushToSheets(rec, 'borrow');
+  }
+
+  clearBorrowForm();
+  showToast(`บันทึกการยืม ${count} รายการสำเร็จ`, 'success');
+  updateOverdueAlert();
+}
+
+function clearBorrowForm() {
+  document.getElementById('borrow_name').value = '';
+  document.getElementById('borrow_dept').value = '';
+  document.getElementById('borrow_due').value = '17:00';
+  document.getElementById('borrow_remark').value = '';
+  document.getElementById('borrow_photo').value = '';
+  document.getElementById('borrow-items').innerHTML = '';
+  addBorrowRow();
+}
+
+// =====================================================================
+// RETURN
+// =====================================================================
+let pendingReturnId = null;
+
+function renderReturnList(filter = '') {
+  const records = loadRecords().filter(r => r.status !== 'Returned');
+  let filtered = records;
+  if (filter) {
+    const q = filter.toLowerCase();
+    filtered = records.filter(r =>
+      r.assetId.toLowerCase().includes(q) ||
+      r.borrowerName.toLowerCase().includes(q) ||
+      r.toolName.toLowerCase().includes(q)
+    );
+  }
+
+  const empty = document.getElementById('return-empty');
+  const table = document.getElementById('return-table');
+  const tbody = document.getElementById('return-tbody');
+
+  if (filtered.length === 0) {
+    empty.style.display = ''; table.style.display = 'none'; return;
+  }
+  empty.style.display = 'none'; table.style.display = '';
+  tbody.innerHTML = filtered.map(r => {
+    const status = getStatus(r);
+    return `<tr>
+      <td><span class="asset-id">${r.assetId}</span></td>
+      <td><span class="name-bold">${r.toolName}</span></td>
+      <td>${r.borrowerName}</td>
+      <td><span class="dept-badge">${r.department}</span></td>
+      <td style="font-family:var(--mono);font-size:12px;">${fmtDateTime(r.borrowedAt)}</td>
+      <td style="font-family:var(--mono);font-size:12px;">${r.dueTime}</td>
+      <td>${statusBadge(status)}</td>
+      <td><button class="btn btn-success btn-sm" onclick="openReturnModal('${r.id}')">↩ คืน</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function filterReturnList() {
+  renderReturnList(document.getElementById('return_search').value);
+}
+
+function openReturnModal(id) {
+  const records = loadRecords();
+  const r = records.find(x => x.id === id);
+  if (!r) return;
+  pendingReturnId = id;
+  document.getElementById('modal-item-info').innerHTML = `
+    <div class="row"><span class="key">Asset ID</span><span class="val">${r.assetId}</span></div>
+    <div class="row"><span class="key">เครื่องมือ</span><span class="val">${r.toolName}</span></div>
+    <div class="row"><span class="key">ผู้ยืม</span><span class="val">${r.borrowerName} — ${r.department}</span></div>
+    <div class="row"><span class="key">ยืมเมื่อ</span><span class="val">${fmtDateTime(r.borrowedAt)}</span></div>
+    <div class="row"><span class="key">สภาพ</span><span class="val">${document.getElementById('return_condition').value}</span></div>
+  `;
+  document.getElementById('returnModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('returnModal').classList.remove('open');
+  pendingReturnId = null;
+}
+
+function confirmReturn() {
+  if (!pendingReturnId) return;
+  const records = loadRecords();
+  const idx = records.findIndex(r => r.id === pendingReturnId);
+  if (idx === -1) return;
+
+  records[idx].status = 'Returned';
+  records[idx].returnedAt = new Date().toISOString();
+  records[idx].condition = document.getElementById('return_condition').value;
+
+  saveRecords(records);
+  pushToSheets(records[idx], 'return');
+
+  closeModal();
+  renderReturnList(document.getElementById('return_search').value);
+  showToast(`คืน ${records[idx].toolName} สำเร็จ!`, 'success');
+  updateOverdueAlert();
+}
+
+// =====================================================================
+// DASHBOARD
+// =====================================================================
+let dashFilter = '';
+function renderDashboard() {
+  const records = loadRecords();
+  const today = new Date().toDateString();
+  const todayRec = records.filter(r => new Date(r.borrowedAt).toDateString() === today);
+  const outRec = records.filter(r => r.status !== 'Returned');
+  const overdueRec = outRec.filter(r => getStatus(r) === 'Overdue');
+  const returnedToday = records.filter(r => r.returnedAt && new Date(r.returnedAt).toDateString() === today);
+
+  document.getElementById('stat-total').textContent = todayRec.length;
+  document.getElementById('stat-out').textContent = outRec.length;
+  document.getElementById('stat-overdue').textContent = overdueRec.length;
+  document.getElementById('stat-returned').textContent = returnedToday.length;
+
+  const q = dashFilter.toLowerCase();
+  let filtered = outRec.filter(r =>
+    !q || r.assetId.toLowerCase().includes(q) ||
+    r.borrowerName.toLowerCase().includes(q) ||
+    r.toolName.toLowerCase().includes(q) ||
+    r.department.toLowerCase().includes(q)
+  );
+
+  const empty = document.getElementById('dashboard-empty');
+  const table = document.getElementById('dash-table');
+  const tbody = document.getElementById('dash-tbody');
+
+  if (filtered.length === 0) {
+    empty.style.display = ''; table.style.display = 'none'; return;
+  }
+  empty.style.display = 'none'; table.style.display = '';
+  tbody.innerHTML = filtered.map(r => {
+    const st = getStatus(r);
+    return `<tr>
+      <td><span class="asset-id">${r.assetId}</span></td>
+      <td><span class="name-bold">${r.toolName}</span></td>
+      <td>${r.borrowerName}</td>
+      <td><span class="dept-badge">${r.department}</span></td>
+      <td style="font-family:var(--mono);font-size:12px;">${fmtDateTime(r.borrowedAt)}</td>
+      <td style="font-family:var(--mono);font-size:12px;">${r.dueTime}</td>
+      <td>${statusBadge(st)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterDashboard(val) { dashFilter = val; renderDashboard(); }
+
+// =====================================================================
+// HISTORY
+// =====================================================================
+function renderHistory() {
+  const records = [...loadRecords()].reverse();
+  const dept = document.getElementById('hist-filter-dept').value;
+  const st = document.getElementById('hist-filter-status').value;
+  const searchQ = document.querySelector('.history-controls input').value.toLowerCase();
+
+  const filtered = records.filter(r => {
+    const matchSearch = !searchQ || 
+      r.assetId.toLowerCase().includes(searchQ) ||
+      r.borrowerName.toLowerCase().includes(searchQ) ||
+      r.toolName.toLowerCase().includes(searchQ) ||
+      r.department.toLowerCase().includes(searchQ);
+    const matchDept = !dept || r.department === dept;
+    const matchStatus = !st || getStatus(r) === st;
+    return matchSearch && matchDept && matchStatus;
+  });
+
+  document.getElementById('hist-count').textContent = filtered.length + ' รายการ';
+
+  const empty = document.getElementById('history-empty');
+  const table = document.getElementById('hist-table');
+  const tbody = document.getElementById('hist-tbody');
+
+  if (filtered.length === 0) {
+    empty.style.display = ''; table.style.display = 'none'; return;
+  }
+  empty.style.display = 'none'; table.style.display = '';
+  tbody.innerHTML = filtered.map((r, i) => {
+    const st = getStatus(r);
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">${records.length - i}</td>
+      <td style="font-family:var(--mono);font-size:11px;white-space:nowrap;">${fmtDateTime(r.borrowedAt)}</td>
+      <td><span class="asset-id">${r.assetId}</span></td>
+      <td><span class="name-bold">${r.toolName}</span></td>
+      <td>${r.borrowerName}</td>
+      <td><span class="dept-badge">${r.department}</span></td>
+      <td style="font-family:var(--mono);font-size:12px;">${r.dueTime}</td>
+      <td style="font-family:var(--mono);font-size:11px;">${r.returnedAt ? fmtDateTime(r.returnedAt) : '—'}</td>
+      <td style="font-size:12px;">${r.condition || '—'}</td>
+      <td>${statusBadge(st)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterHistory() {
+  renderHistory();
+}
+
+// =====================================================================
+// CATALOG
+// =====================================================================
+function addToCatalog() {
+  const id = document.getElementById('cat_id').value.trim().toUpperCase();
+  const name = document.getElementById('cat_name').value.trim();
+  if (!id || !name) { showToast('กรอก Asset ID และชื่อเครื่องมือ', 'error'); return; }
+
+  const catalog = loadCatalog();
+  if (catalog.find(c => c.id === id)) {
+    showToast('Asset ID นี้มีอยู่แล้ว', 'warning'); return;
+  }
+
+  catalog.push({ id, name });
+  saveCatalog(catalog);
+  document.getElementById('cat_id').value = '';
+  document.getElementById('cat_name').value = '';
+  renderCatalog();
+  showToast('เพิ่มเครื่องมือสำเร็จ', 'success');
+}
+
+function renderCatalog() {
+  const catalog = loadCatalog();
+  const empty = document.getElementById('catalog-empty');
+  const table = document.getElementById('catalog-table');
+  const tbody = document.getElementById('catalog-tbody');
+
+  if (catalog.length === 0) {
+    empty.style.display = ''; table.style.display = 'none'; return;
+  }
+  empty.style.display = 'none'; table.style.display = '';
+  tbody.innerHTML = catalog.map((c, i) => `
+    <tr>
+      <td><span class="asset-id">${c.id}</span></td>
+      <td>${c.name}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="removeCatalog(${i})" style="color:var(--red);">ลบ</button></td>
+    </tr>
+  `).join('');
+}
+
+function removeCatalog(idx) {
+  const catalog = loadCatalog();
+  catalog.splice(idx, 1);
+  saveCatalog(catalog);
+  renderCatalog();
+}
+
+// =====================================================================
+// SETTINGS
+// =====================================================================
+function loadSettingsUI() {
+  const s = loadSettings();
+  document.getElementById('set_sheet_url').value = s.sheetUrl || '';
+  renderCatalog();
+}
+
+function saveSettings() {
+  const s = { sheetUrl: document.getElementById('set_sheet_url').value.trim() };
+  saveSettingsData(s);
+  showToast('บันทึก Settings สำเร็จ', 'success');
+}
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+function getStatus(r) {
+  if (r.status === 'Returned') return 'Returned';
+  const [h, m] = r.dueTime.split(':').map(Number);
+  const dueDate = new Date(r.borrowedAt);
+  dueDate.setHours(h, m, 0, 0);
+  return new Date() > dueDate ? 'Overdue' : 'Out';
+}
+
+function statusBadge(st) {
+  if (st === 'Returned') return `<span class="badge-returned">Returned</span>`;
+  if (st === 'Overdue') return `<span class="badge-overdue">⚠ OVERDUE</span>`;
+  return `<span class="badge-out">Out</span>`;
+}
+
+function fmtDateTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('th-TH', {day:'2-digit',month:'2-digit',year:'2-digit'}) + ' ' +
+         d.toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit'});
+}
+
+// =====================================================================
+// OVERDUE ALERT
+// =====================================================================
+function updateOverdueAlert() {
+  const records = loadRecords();
+  const overdue = records.filter(r => getStatus(r) === 'Overdue');
+  const banner = document.getElementById('overdueAlert');
+
+  if (overdue.length > 0) {
+    banner.classList.remove('hidden');
+    document.getElementById('overdueAlertTitle').textContent = `⚠️ มีเครื่องมือค้างคืน ${overdue.length} รายการ!`;
+    document.getElementById('overdueAlertBody').textContent = 
+      overdue.map(r => `${r.assetId} (${r.borrowerName})`).join(', ');
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+
+// =====================================================================
+// GOOGLE SHEETS INTEGRATION
+// =====================================================================
+async function pushToSheets(record, action) {
+  const s = loadSettings();
+  if (!s.sheetUrl) return;
+
+  try {
+    await fetch(s.sheetUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, record })
+    });
+    console.log(`✅ Sent to Sheets: ${action} - ${record.assetId}`);
+  } catch (e) {
+    console.warn('⚠️ Sheets push failed (but data saved locally):', e);
+  }
+}
+
+// =====================================================================
+// EXPORT & CLEAR
+// =====================================================================
+function exportCSV() {
+  const records = loadRecords();
+  if (!records.length) { showToast('ไม่มีข้อมูลสำหรับ Export', 'warning'); return; }
+
+  const header = ['ID','BorrowedAt','BorrowerName','Department','AssetID','ToolName','DueTime','Remark','Attachment','ReturnedAt','Condition','Status'];
+  const rows = records.map(r => [
+    r.id, r.borrowedAt, r.borrowerName, r.department, r.assetId, r.toolName,
+    r.dueTime, r.remark || '', r.attachment || '', r.returnedAt || '', r.condition || '', getStatus(r)
+  ]);
+
+  const csv = [header, ...rows].map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF' + csv);
+  a.download = `BIC_ToolTracker_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast('Export CSV สำเร็จ', 'success');
+}
+
+function clearAllData() {
+  if (!confirm('ลบข้อมูลทั้งหมด? (ไม่สามารถกู้คืนได้)\nแนะนำ Export CSV ก่อน')) return;
+  localStorage.removeItem(KEYS.RECORDS);
+  renderDashboard(); 
+  renderHistory(); 
+  renderReturnList();
+  updateOverdueAlert();
+  showToast('ล้างข้อมูลทั้งหมดแล้ว', 'warning');
+}
+
+// =====================================================================
+// INIT
+// =====================================================================
+window.addEventListener('load', () => {
+  updateOverdueAlert();
+  renderDashboard();
+  renderHistory();
+  addBorrowRow();           // เริ่มต้นด้วย 1 แถว
+});
+</script>
+</body>
+</html>
