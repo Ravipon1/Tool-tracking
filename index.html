@@ -3,55 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BIC Tool Tracker — ระบบยืม-คืนเครื่องมือ</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<title>BIC Tool Tracker</title>
 <style>
-  :root {
-    --accent: #2563eb; --green: #2ecc71; --red: #e8523a;
-    --text: #0f172a; --text-dim: #64748b; --radius: 8px;
-  }
-  * { box-sizing: border-box; margin:0; padding:0; }
-  body { font-family: 'IBM Plex Sans Thai', sans-serif; background: #f4f8ff; color: var(--text); }
-  .header { background: white; padding: 15px 20px; border-bottom: 3px solid var(--accent); position: sticky; top: 0; z-index: 100; }
-  .container { max-width: 1100px; margin: 20px auto; padding: 0 20px; }
-  .form-card { background: white; padding: 25px; border-radius: var(--radius); box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 25px; }
-  .btn { padding: 12px 24px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
-  .btn-primary { background: var(--accent); color: white; }
-  .toast { position: fixed; bottom: 20px; right: 20px; background: #333; color: white; padding: 15px 25px; border-radius: 8px; z-index: 9999; display: none; }
+  body { font-family: 'IBM Plex Sans Thai', sans-serif; padding: 20px; background: #f4f8ff; }
+  .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
+  input, select, button { padding: 12px; margin: 8px 0; width: 100%; border-radius: 6px; }
+  button { background: #2563eb; color: white; border: none; font-weight: bold; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 15px 25px; border-radius: 8px; z-index: 9999; }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>BIC Tool Tracker — ระบบยืม-คืนเครื่องมือ</h1>
-</div>
-
-<div class="container">
-  <div class="form-card">
-    <h2>🔧 ยืมเครื่องมือ</h2>
-    
-    <div style="margin-bottom:15px;">
-      <label>ชื่อผู้ยืม *</label>
-      <input type="text" id="borrow_name" placeholder="กรอกชื่อ-นามสกุล" style="width:100%; padding:12px;">
-    </div>
-
-    <div style="margin-bottom:15px;">
-      <label>แผนก *</label>
-      <select id="borrow_dept" style="width:100%; padding:12px;">
-        <option value="">— เลือกแผนก —</option>
-        <option value="ME">ME - Mechanical Engineer</option>
-        <option value="EE">EE - Electrical Engineer</option>
-        <option value="CI">CI - Control & Instrument Engineer</option>
-      </select>
-    </div>
-
-    <div style="margin-bottom:15px;">
-      <label>Asset ID *</label>
-      <input type="text" id="asset_id" placeholder="เช่น BIC-T-001" style="width:100%; padding:12px;">
-    </div>
-
-    <button onclick="submitBorrow()" class="btn btn-primary" style="width:100%;">✅ ยืนยันการยืม</button>
-  </div>
+<div class="card">
+  <h2>🔧 ทดสอบการยืมเครื่องมือ</h2>
+  <input type="text" id="name" placeholder="ชื่อผู้ยืม">
+  <input type="text" id="asset" placeholder="Asset ID (เช่น BIC-T-001)">
+  <select id="dept">
+    <option value="">เลือกแผนก</option>
+    <option value="ME">ME - Mechanical Engineer</option>
+    <option value="EE">EE - Electrical Engineer</option>
+    <option value="CI">CI - Control & Instrument Engineer</option>
+  </select>
+  <button onclick="testSubmit()">ยืนยันการยืม</button>
 </div>
 
 <div id="toast" class="toast"></div>
@@ -59,63 +32,51 @@
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzC-nIsDH2e3VqUeiV2CFSkbeKRiNNan-nsuBcC8M8mtH92gnRZD_xLY1x5rwKOy52A/exec";
 
-async function submitBorrow() {
-  const name = document.getElementById('borrow_name').value.trim();
-  const dept = document.getElementById('borrow_dept').value;
-  const assetId = document.getElementById('asset_id').value.trim().toUpperCase();
+async function testSubmit() {
+  const name = document.getElementById('name').value.trim();
+  const asset = document.getElementById('asset').value.trim().toUpperCase();
+  const dept = document.getElementById('dept').value;
 
-  if (!name || !dept || !assetId) {
-    showToast("กรุณากรอกข้อมูลให้ครบ", 3000);
+  if (!name || !asset || !dept) {
+    showToast("กรุณากรอกข้อมูลให้ครบ");
     return;
   }
 
   const record = {
-    id: 'TX' + Date.now(),
+    id: "TX" + Date.now(),
     borrowerName: name,
     department: dept,
-    assetId: assetId,
-    toolName: "เครื่องมือ " + assetId,
-    dueTime: "17:00",
-    remark: "",
-    attachment: ""
+    assetId: asset,
+    toolName: "เครื่องมือ " + asset
   };
+
+  showToast("กำลังส่งข้อมูล...");
 
   try {
     await fetch(SCRIPT_URL, {
       method: 'POST',
-      mode: 'no-cors',
-      headers: {'Content-Type': 'application/json'},
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'borrow', record: record })
     });
 
-    showToast(`✅ บันทึกการยืม ${assetId} สำเร็จ`, 4000);
-
-    // รีเซ็ตฟอร์ม
-    document.getElementById('borrow_name').value = '';
-    document.getElementById('asset_id').value = '';
+    showToast("✅ ส่งข้อมูลสำเร็จ! ตรวจ Google Sheet ได้เลย", 5000);
+    
+    // รีเซ็ต
+    document.getElementById('name').value = '';
+    document.getElementById('asset').value = '';
 
   } catch (err) {
-    showToast("เกิดข้อผิดพลาดในการส่งข้อมูล", 4000);
     console.error(err);
+    showToast("❌ ส่งข้อมูลไม่สำเร็จ ดู Console (F12)", 5000);
   }
 }
 
-function showToast(msg, duration = 3000) {
-  const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.style.display = 'block';
-  setTimeout(() => { toast.style.display = 'none'; }, duration);
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 5000);
 }
-
-// รองรับ QR Code
-window.onload = function() {
-  const params = new URLSearchParams(window.location.search);
-  const asset = params.get('asset');
-  if (asset) {
-    document.getElementById('asset_id').value = asset.toUpperCase();
-    showToast(`สแกน QR Code: ${asset.toUpperCase()}`, 3000);
-  }
-};
 </script>
 </body>
 </html>
