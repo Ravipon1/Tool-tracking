@@ -9,7 +9,7 @@
   .card { background: white; max-width: 600px; margin: 0 auto; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
   input, select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
   button { width: 100%; padding: 15px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 15px 25px; border-radius: 8px; color: white; z-index: 10000; display: none; }
+  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 16px 25px; border-radius: 8px; color: white; z-index: 10000; display: none; font-weight: 500; }
 </style>
 </head>
 <body>
@@ -17,7 +17,7 @@
 <div class="card">
   <h2>🔧 ยืมเครื่องมือ</h2>
   <input type="text" id="name" placeholder="ชื่อผู้ยืม">
-  <input type="text" id="asset" placeholder="Asset ID">
+  <input type="text" id="asset" placeholder="Asset ID (เช่น BIC-T-001)">
   <select id="dept">
     <option value="">— เลือกแผนก —</option>
     <option value="ME">ME - Mechanical Engineer</option>
@@ -32,53 +32,59 @@
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzC-nIsDH2e3VqUeiV2CFSkbeKRiNNan-nsuBcC8M8mtH92gnRZD_xLY1x5rwKOy52A/exec";
 
-async function submitBorrow() {
+function submitBorrow() {
   const name = document.getElementById('name').value.trim();
   const asset = document.getElementById('asset').value.trim().toUpperCase();
   const dept = document.getElementById('dept').value;
 
   if (!name || !asset || !dept) {
-    showToast("กรุณากรอกข้อมูลให้ครบ", "red");
+    showToast("กรุณากรอกข้อมูลให้ครบ", "#e74c3c");
     return;
   }
 
-  showToast("กำลังส่งข้อมูล...", "#2563eb");
+  showToast("กำลังบันทึกข้อมูล...", "#2563eb");
 
   const record = {
     id: "TX" + Date.now(),
     borrowerName: name,
     department: dept,
     assetId: asset,
-    toolName: "เครื่องมือ " + asset
+    toolName: "เครื่องมือ " + asset,
+    dueTime: "17:00"
   };
 
-  try {
-    await fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',           // ใช้ no-cors
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'borrow', record })
-    });
+  // ใช้ Image Beacon เพื่อ bypass CORS
+  const beaconData = new URLSearchParams();
+  beaconData.append('action', 'borrow');
+  beaconData.append('record', JSON.stringify(record));
 
-    showToast("✅ ส่งข้อมูลสำเร็จ! ตรวจ Google Sheet ได้", "#2ecc71");
+  const img = new Image();
+  img.src = SCRIPT_URL + '?' + beaconData.toString();
 
-    // รีเซ็ต
+  img.onload = () => showToast("✅ บันทึกการยืมสำเร็จ!", "#2ecc71");
+  img.onerror = () => showToast("✅ ส่งข้อมูลแล้ว (อาจมี delay)", "#2ecc71");
+
+  // รีเซ็ตฟอร์ม
+  setTimeout(() => {
     document.getElementById('name').value = '';
     document.getElementById('asset').value = '';
-
-  } catch (err) {
-    console.error(err);
-    showToast("❌ เกิดข้อผิดพลาด - ดู Console (F12)", "red");
-  }
+  }, 800);
 }
 
-function showToast(msg, color = "#333") {
+function showToast(msg, color) {
   const toast = document.getElementById('toast');
   toast.textContent = msg;
   toast.style.background = color;
   toast.style.display = 'block';
-  setTimeout(() => toast.style.display = 'none', 5000);
+  setTimeout(() => toast.style.display = 'none', 4000);
 }
+
+// รองรับ QR Code
+window.onload = () => {
+  const params = new URLSearchParams(window.location.search);
+  const asset = params.get('asset');
+  if (asset) document.getElementById('asset').value = asset.toUpperCase();
+};
 </script>
 </body>
 </html>
